@@ -3,6 +3,11 @@ import Header from './components/Header';
 import Dashboard from './components/dashboard/Dashboard';
 import { useHealthData } from './hooks/useHealthData';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Routes, Route } from "react-router-dom";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Support from "./pages/Support";
+import Contact from "./pages/Contact";
 
 // Loading screen component
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -227,72 +232,79 @@ function App() {
           username={userName}
         />
       )}
-      
-      <AnimatePresence mode="wait">
-        {appState === 'loading' && (
-          <LoadingScreen 
-            key="loading" 
-            onComplete={() => setAppState('onboarding')} 
-          />
-        )}
-        
-        {appState === 'onboarding' && (
-          <OnboardingCard 
-            key="onboarding" 
-            onComplete={handleOnboardingComplete} 
-          />
-        )}
-        
-        {appState === 'dashboard' && (
-          <motion.main 
-            key="dashboard"
-            className="pb-8 pt-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {healthData ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.5,
-                  staggerChildren: 0.1,
-                  delayChildren: 0.2
-                }}
-              >
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <h1 className="text-2xl font-semibold text-gray-800 dark:text-white mb-6">
-                      Welcome, <span className="text-blue-500">{userName}</span>!
-                    </h1>
-                  </motion.div>
-                  
-                  <Dashboard healthData={healthData} />
-                </div>
-              </motion.div>
-            ) : (
-              <div className="flex justify-center items-center h-64">
-                <motion.div
-                  animate={{ 
-                    rotate: 360,
-                    scale: [1, 1.1, 1]
-                  }}
-                  transition={{ 
-                    rotate: { duration: 1.5, repeat: Infinity, ease: "linear" },
-                    scale: { duration: 1, repeat: Infinity, ease: "easeInOut" }
-                  }}
-                  className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent border-b-green-500"
-                ></motion.div>
-              </div>
+      <Routes>
+        <Route path="/" element={
+          <AnimatePresence mode="wait">
+            {appState === 'loading' && (
+              <LoadingScreen 
+                key="loading" 
+                onComplete={() => setAppState('onboarding')} 
+              />
             )}
-          </motion.main>
-        )}
-      </AnimatePresence>
+            
+            {appState === 'onboarding' && (
+              <OnboardingCard 
+                key="onboarding" 
+                onComplete={handleOnboardingComplete} 
+              />
+            )}
+            
+            {appState === 'dashboard' && (
+              <motion.main 
+                key="dashboard"
+                className="pb-8 pt-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                {healthData ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.5,
+                      staggerChildren: 0.1,
+                      delayChildren: 0.2
+                    }}
+                  >
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <h1 className="text-2xl font-semibold text-gray-800 dark:text-white mb-6">
+                          Welcome, <span className="text-blue-500">{userName}</span>!
+                        </h1>
+                      </motion.div>
+                      
+                      <Dashboard healthData={healthData} />
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="flex justify-center items-center h-64">
+                    <motion.div
+                      animate={{ 
+                        rotate: 360,
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ 
+                        rotate: { duration: 1.5, repeat: Infinity, ease: "linear" },
+                        scale: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                      }}
+                      className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent border-b-green-500"
+                    ></motion.div>
+                  </div>
+                )}
+              </motion.main>
+            )}
+          </AnimatePresence>
+        } />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/contact" element={<Contact />} />
+      </Routes>
       
       <AnimatePresence>
         {appState === 'dashboard' && (

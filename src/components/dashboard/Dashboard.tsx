@@ -10,6 +10,7 @@ import OverlayChart from './OverlayChart';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useAnimation } from 'framer-motion';
 import { Bell, Search, X, MessageSquare, Info } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { Link } from 'react-router-dom';
 
 
 
@@ -726,27 +727,38 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
           >
-            <motion.a
-              href="/privacy"
-              className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
-              whileHover={{ y: -2 }}
-            >
-              Privacy
-            </motion.a>
-            <motion.a
-              href="/terms"
-              className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
-              whileHover={{ y: -2 }}
-            >
-              Terms
-            </motion.a>
-            <motion.a
-              href="/support"
-              className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
-              whileHover={{ y: -2 }}
-            >
-              Support
-            </motion.a>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link
+                to="/privacy"
+                className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+              >
+                Privacy
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link
+                to="/terms"
+                className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+              >
+                Terms
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link
+                to="/support"
+                className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+              >
+                Support
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link
+                to="/contact"
+                className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+              >
+                Contact
+              </Link>
+            </motion.div>
           </motion.div>
         </div>
       </motion.footer>
