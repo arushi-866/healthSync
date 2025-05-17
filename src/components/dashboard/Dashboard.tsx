@@ -8,7 +8,7 @@ import WeightCard from './WeightCard';
 import HealthScoreCard from './HealthScoreCard';
 import OverlayChart from './OverlayChart';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useAnimation } from 'framer-motion';
-import { Bell, Search, X, MessageSquare, Info } from 'lucide-react';
+import { Bell, Search, X, MessageSquare, Info, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Link } from 'react-router-dom';
 
@@ -70,6 +70,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [showChatbot, setShowChatbot] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -135,6 +136,11 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       title: "Health Tips",
       description: "Tap the floating info button for daily health tips.",
       target: "healthTip",
+    },
+    {
+      title: "SyncAI Chatbot",
+      description: "Tap the purple sparkle button at the bottom left to chat with SyncAI, your AI health assistant.",
+      target: "chatbot",
     },
   ];
 
@@ -426,6 +432,122 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       setNotificationCount(0);
     }
   }
+
+  const HealthBotLogo = () => (
+    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+      <Sparkles className="text-white" size={24} />
+    </span>
+  );
+
+  const HEALTHBOT_NAME = "SyncAI";
+
+  const Chatbot: React.FC = () => {
+    const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([
+      { sender: "bot", text: "Hi! I'm SyncAI, your HealthSync assistant. How can I help you today?" }
+    ]);
+    const [input, setInput] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    // Replace with your Gemini 1.5 Pro API key
+    const GEMINI_API_KEY = "AIzaSyAAesaurLNdmCfdAlrfZJ53jgTp0x8pXB4";
+
+    const sendMessage = async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      if (!input.trim()) return;
+      const userMsg = input.trim();
+      setMessages((msgs) => [...msgs, { sender: "user", text: userMsg }]);
+      setInput("");
+      setLoading(true);
+
+      try {
+        const res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=" + GEMINI_API_KEY,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: userMsg }] }],
+              generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 256
+              }
+            })
+          }
+        );
+        if (res.status === 429) {
+          setMessages((msgs) => [
+            ...msgs,
+            { sender: "bot", text: "SyncAI is receiving too many requests right now. Please wait a minute and try again." }
+          ]);
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        const botText =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+          "Sorry, I couldn't understand that. Please try again!";
+        setMessages((msgs) => [...msgs, { sender: "bot", text: botText }]);
+      } catch {
+        setMessages((msgs) => [
+          ...msgs,
+          { sender: "bot", text: "Sorry, there was a problem connecting to SyncAI. Please try again." }
+        ]);
+      }
+      setLoading(false);
+    };
+
+    return (
+      <div className="fixed bottom-8 left-8 z-[100] w-[350px] max-w-[95vw] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-2xl">
+          <HealthBotLogo />
+          <span className="font-bold text-white text-lg">{HEALTHBOT_NAME}</span>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: 320 }}>
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`px-4 py-2 rounded-xl text-sm max-w-[80%] ${
+                  msg.sender === "user"
+                    ? "bg-indigo-100 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="px-4 py-2 rounded-xl text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 animate-pulse">
+                SyncAI is typing...
+              </div>
+            </div>
+          )}
+        </div>
+        <form onSubmit={sendMessage} className="flex border-t border-gray-100 dark:border-gray-800">
+          <input
+            className="flex-1 px-4 py-3 bg-transparent outline-none text-gray-900 dark:text-white"
+            placeholder="Ask SyncAI anything..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            disabled={loading}
+          />
+          <button
+            type="submit"
+            className="px-4 py-3 text-indigo-600 dark:text-indigo-400 font-semibold hover:underline disabled:opacity-50"
+            disabled={loading}
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -742,6 +864,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       {showOnboarding && onboardingSteps[onboardingStep].target === "healthTip" && (
         <div className="pointer-events-none fixed z-[99998] bottom-8 right-8 w-20 h-20 rounded-full border-4 border-indigo-400 animate-pulse"></div>
       )}
+      {showOnboarding && onboardingSteps[onboardingStep].target === "chatbot" && (
+        <div className="pointer-events-none fixed z-[99998] bottom-8 left-8 w-20 h-20 rounded-full border-4 border-purple-400 animate-pulse"></div>
+      )}
 
       {/* Main content */}
       {!showWelcome && (
@@ -883,6 +1008,40 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
                 <X size={16} />
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Chatbot Floating Button */}
+      <motion.button
+        className="fixed bottom-8 left-8 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setShowChatbot((v) => !v)}
+        aria-label="Open SyncAI Chatbot"
+        id="chatbot-fab"
+      >
+        <Sparkles size={28} className="text-white" />
+      </motion.button>
+
+      {/* Chatbot Popup - appears exactly where the button is */}
+      <AnimatePresence>
+        {showChatbot && (
+          <motion.div
+            initial={{ y: 40, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 40, opacity: 0, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="fixed bottom-8 left-8 z-[100] w-[350px] max-w-[95vw] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
+          >
+            <Chatbot />
+            <button
+              onClick={() => setShowChatbot(false)}
+              className="absolute -top-3 -right-3 bg-indigo-500 hover:bg-indigo-700 text-white rounded-full p-1 shadow"
+              aria-label="Close Chatbot"
+            >
+              <X size={18} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
