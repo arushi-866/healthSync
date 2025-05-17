@@ -563,7 +563,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       {!showWelcome && (
         <div className="max-w-7xl mx-auto px-4 mt-8 flex items-center justify-between">
           <span className="text-lg font-semibold text-gray-800 dark:text-white">
-            {`Welcome${healthData?.user?.name ? `, ${healthData.user.name}` : ''}!`}
+            {/* {`Welcome${healthData?.user?.name ? `, ${healthData.user.name}` : ''}!`} */}
           </span>
           <div className="flex items-center space-x-3">
             {/* Search bar */}
@@ -604,7 +604,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             </AnimatePresence>
 
             {/* Notifications */}
-            <motion.div className="relative" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+            <div className="relative">
               <button
                 className="p-2 rounded-full hover:bg-indigo-400/20 transition-colors relative"
                 onClick={handleNotificationsClick}
@@ -655,7 +655,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
           </div>
         </div>
       )}

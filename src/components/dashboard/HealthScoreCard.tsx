@@ -235,35 +235,34 @@ const HealthScoreCard: React.FC<HealthScoreCardProps> = ({
         </motion.div>
       }
       extraControls={
-        <div className="flex space-x-1">
+        <div className="flex space-x-1 relative">
           <motion.button
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
             onClick={toggleTooltip}
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showTooltip && (
-                <motion.div 
-                  ref={tooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-64 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h5 className="font-medium mb-1 text-gray-800 dark:text-gray-200">About Health Score</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Your Health Score combines activity, sleep quality, nutrition, and mental wellness
-                    into a single metric. Scores update daily based on your data.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.button>
+          <AnimatePresence>
+            {showTooltip && (
+              <motion.div
+                ref={tooltipRef}
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.22 }}
+                // Remove any opacity utility classes that might affect hover
+                className="absolute right-full top-0 mr-4 w-[320px] max-w-[90vw] min-w-[220px] p-6 bg-gray-900 rounded-lg shadow-2xl text-left z-[9999] border border-gray-700"
+                style={{ pointerEvents: 'auto', opacity: 1 }}
+              >
+                <h5 className="font-semibold mb-2 text-gray-100">About Health Score</h5>
+                <p className="text-base text-gray-300 leading-relaxed">
+                  Your Health Score combines activity, sleep quality, nutrition, and mental wellness
+                  into a single metric. Scores update daily based on your data.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       }
     >
