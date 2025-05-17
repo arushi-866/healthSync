@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HealthData } from '../../hooks/useHealthData';
 import MoodCard from './MoodCard';
 import SleepCard from './SleepCard';
 import WaterCard from './WaterCard';
@@ -8,9 +7,46 @@ import HeartRateCard from './HeartRateCard';
 import WeightCard from './WeightCard';
 import HealthScoreCard from './HealthScoreCard';
 import OverlayChart from './OverlayChart';
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
-import {  Bell,  Maximize, Search, X, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useAnimation } from 'framer-motion';
+import { Bell, Search, X, MessageSquare, Info } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
+
+
+
+export interface HealthData {
+  healthScore: number;
+  mood: {
+    value: number;
+    history: { date: string; value: number; }[];
+  };
+  sleep: {
+    value: number;
+    history: { date: string; value: number; }[];
+  };
+  water: {
+    value: number;
+    goal: number;
+    history: { date: string; value: number; }[];
+  };
+  steps: {
+    value: number;
+    goal: number;
+    history: { date: string; value: number; }[];
+  };
+  heartRate: {
+    value: number;
+    history: { date: string; value: number; }[];
+  };
+  weight: {
+    value: number;
+    history: { date: string; value: number; }[];
+  };
+  user?: {
+    name?: string;
+    // Add other user fields if needed
+  };
+}
 
 interface DashboardProps {
   healthData: HealthData;
@@ -27,10 +63,34 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
   const [notificationCount, setNotificationCount] = useState(3);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [confettiShown, setConfettiShown] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
-  // Notifications array (add here to avoid "not defined" error)
+  const controls = useAnimation();
+  const staggerControls = useAnimation();
+
+  const scrollY = useMotionValue(0);
+  const springScrollY = useSpring(scrollY, { stiffness: 100, damping: 30 });
+
+  const headerY = useTransform(springScrollY, [0, 300], [0, -50]);
+  const headerOpacity = useTransform(springScrollY, [0, 100], [1, 0.8]);
+
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const healthTips = [
+    "Try to drink at least 8 glasses of water daily to stay hydrated.",
+    "Aim for 7-9 hours of quality sleep each night for better health.",
+    "Take short breaks to stand and stretch if you sit for long periods.",
+    "Regular meditation can help reduce stress and improve focus.",
+    "Try to incorporate 30 minutes of physical activity into your daily routine."
+  ];
+
   const notifications = [
     {
       id: 1,
@@ -52,24 +112,26 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     }
   ];
 
-  // Page scroll tracking for parallax effects
-  const scrollY = useMotionValue(0);
-  const scrollYSmooth = useSpring(scrollY, { damping: 15, stiffness: 100 });
-
-  // Card focus handler must be defined before cards array
   const handleCardFocus = (cardId: string) => {
     if (layoutMode === 'grid') {
       setLayoutMode('focus');
       setFocusedCard(cardId);
+      controls.start({
+        scale: [1, 0.98, 1.02, 1],
+        transition: { duration: 0.4 }
+      });
     } else if (focusedCard === cardId) {
       setLayoutMode('grid');
       setFocusedCard(null);
+      controls.start({
+        scale: [1, 0.95, 1.03, 1],
+        transition: { duration: 0.5 }
+      });
     } else {
       setFocusedCard(cardId);
     }
   };
 
-  // List of cards for ordered rendering - define only once!
   const cards: { id: string; label: string; component: JSX.Element }[] = [
     {
       id: 'health-score',
@@ -87,7 +149,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       component: (
         <MoodCard
           value={healthData.mood.value}
-          history={healthData.mood.history}
+          history={healthData.mood.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.mood.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
         />
       ),
     },
@@ -97,7 +162,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       component: (
         <SleepCard
           value={healthData.sleep.value}
-          history={healthData.sleep.history}
+          history={healthData.sleep.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.sleep.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
         />
       ),
     },
@@ -108,8 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         <WaterCard
           value={healthData.water.value}
           goal={healthData.water.goal}
-          history={healthData.water.history}
-          // onAddWater={healthData.water.onAddWater}
+          history={healthData.water.history.map(item => ({ value: item.value }))}
         />
       ),
     },
@@ -120,7 +187,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         <StepsCard
           value={healthData.steps.value}
           goal={healthData.steps.goal}
-          history={healthData.steps.history}
+          history={healthData.steps.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.steps.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
         />
       ),
     },
@@ -130,7 +200,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       component: (
         <HeartRateCard
           value={healthData.heartRate.value}
-          history={healthData.heartRate.history}
+          history={healthData.heartRate.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.heartRate.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
         />
       ),
     },
@@ -140,7 +213,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       component: (
         <WeightCard
           value={healthData.weight.value}
-          history={healthData.weight.history}
+          history={healthData.weight.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.weight.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
         />
       ),
     },
@@ -149,7 +225,51 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       label: 'Overlay',
       component: (
         <OverlayChart
-          healthData={healthData}
+          healthData={{
+            ...healthData,
+            mood: {
+              ...healthData.mood,
+              history: healthData.mood.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.mood.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            },
+            sleep: {
+              ...healthData.sleep,
+              history: healthData.sleep.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.sleep.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            },
+            water: {
+              ...healthData.water,
+              history: healthData.water.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.water.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            },
+            steps: {
+              ...healthData.steps,
+              history: healthData.steps.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.steps.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            },
+            heartRate: {
+              ...healthData.heartRate,
+              history: healthData.heartRate.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.heartRate.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            },
+            weight: {
+              ...healthData.weight,
+              history: healthData.weight.history.map((item, idx) => ({
+                date: new Date(Date.now() - (healthData.weight.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                value: item.value
+              }))
+            }
+          }}
         />
       ),
     },
@@ -166,23 +286,42 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       document.body.classList.remove('dark');
     }
 
-    // Track scroll position for parallax effects
     const handleScroll = () => {
       scrollY.set(window.scrollY);
     };
 
     window.addEventListener('scroll', handleScroll);
 
-    // Hide welcome message after 5 seconds
     const welcomeTimer = setTimeout(() => {
       setShowWelcome(false);
-    }, 5000);
+      staggerControls.start("visible");
+
+      if (!confettiShown) {
+        setShowConfetti(true);
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#4F46E5', '#7C3AED', '#EC4899', '#10B981'],
+        });
+        setConfettiShown(true);
+        setTimeout(() => setShowConfetti(false), 2500);
+      }
+    }, 4000);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
       clearTimeout(welcomeTimer);
     };
-  }, [darkMode, scrollY]);
+  }, [darkMode, scrollY, mouseX, mouseY, staggerControls, confettiShown]);
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
@@ -190,7 +329,6 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     }
   }, [isSearchOpen]);
 
-  // Optional: close notifications when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -205,36 +343,15 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showNotifications]);
 
- 
-
   const refreshData = () => {
     setRefreshing(true);
-
-    // Simulate data refresh
+    controls.start({
+      rotate: [0, 360],
+      transition: { duration: 1, ease: "easeInOut" }
+    });
     setTimeout(() => {
       setRefreshing(false);
     }, 1500);
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.08,
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }),
-    exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
-    hover: {
-      y: -5,
-      boxShadow: darkMode
-        ? "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
-        : "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-      transition: { duration: 0.2 }
-    }
   };
 
   const handleSearchToggle = () => {
@@ -246,17 +363,6 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     }
   };
 
-  // Create motion value hooks for all cards outside the render/return - avoids conditional hook creation
-  // These will be used for parallax effects based on scroll position
-  const cardOffsets = cards.map((_, i) => {
-    return useTransform(
-      scrollYSmooth,
-      [0, 1000],
-      [0, -30 + (i % 3) * 10]
-    );
-  });
-
-  // Filter cards based on search term
   const filteredCards = searchTerm.trim()
     ? cards.filter(card =>
         card.label.toLowerCase().includes(searchTerm.trim().toLowerCase())
@@ -272,14 +378,50 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       setNotificationCount(0);
     }
   }
+
   return (
     <motion.div
+      ref={dashboardRef}
       className={`min-h-screen transition-colors duration-500 ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
     >
-      {/* Welcome overlay */}
+      {/* Floating particles background for dark mode */}
+      {darkMode && (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-indigo-600 opacity-20"
+              initial={{
+                width: Math.random() * 15 + 5,
+                height: Math.random() * 15 + 5,
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+              }}
+              animate={{
+                x: [
+                  Math.random() * window.innerWidth,
+                  Math.random() * window.innerWidth,
+                ],
+                y: [
+                  Math.random() * window.innerHeight,
+                  Math.random() * window.innerHeight,
+                ],
+              }}
+              transition={{
+                duration: Math.random() * 50 + 30,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "linear",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Welcome overlay with enhanced animation sequence */}
       <AnimatePresence>
         {showWelcome && (
           <motion.div
@@ -291,7 +433,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             }}
           >
             <motion.div
-              className="text-center text-white"
+              className="text-center text-white z-10"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{
                 scale: 1,
@@ -305,7 +447,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
               }}
             >
               <motion.h1
-                className="text-5xl font-bold mb-4"
+                className="text-5xl font-bold mb-4 tracking-tight"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{
                   y: 0,
@@ -313,8 +455,22 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
                   transition: { delay: 0.5, duration: 0.6 }
                 }}
               >
-                Welcome to HealthSync
+                Welcome to 
+                <motion.span 
+                  className="bg-gradient-to-r from-indigo-300 to-purple-400 text-transparent bg-clip-text ml-2"
+                  animate={{ 
+                    color: ["#C4B5FD", "#A78BFA", "#8B5CF6", "#C4B5FD"],
+                  }}
+                  transition={{ 
+                    duration: 4,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                >
+                  HealthSync
+                </motion.span>
               </motion.h1>
+              
               <motion.p
                 className="text-xl opacity-90"
                 initial={{ y: 20, opacity: 0 }}
@@ -326,52 +482,110 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
               >
                 Your personal health dashboard, reimagined
               </motion.p>
+
+              {/* Username only, no search/notifications here */}
+              <motion.div
+                className="flex items-center justify-center mt-8 gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1, duration: 0.6 }}
+              >
+                <span className="text-lg font-semibold text-white">
+                  {`Welcome${healthData?.user?.name ? `, ${healthData.user.name}` : ''}!`}
+                </span>
+              </motion.div>
+
+              {/* Loading animation */}
+              <motion.div 
+                className="flex justify-center mt-12"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2, duration: 0.5 }}
+              >
+                <div className="flex space-x-2">
+                  {[0, 1, 2, 3].map((dot) => (
+                    <motion.div
+                      key={dot}
+                      className="h-3 w-3 rounded-full bg-indigo-400"
+                      animate={{
+                        y: ["0%", "-50%", "0%"],
+                        opacity: [0.5, 1, 0.5]
+                      }}
+                      transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        repeatType: "loop",
+                        delay: dot * 0.1,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
+            
+            {/* Animated dots in background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {[...Array(30)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full bg-indigo-500 opacity-10"
+                  style={{
+                    width: Math.random() * 10 + 5,
+                    height: Math.random() * 10 + 5,
+                  }}
+                  initial={{
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    opacity: 0
+                  }}
+                  animate={{
+                    opacity: [0, 0.5, 0],
+                    scale: [0, 1, 0],
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                  }}
+                  transition={{
+                    duration: Math.random() * 5 + 3,
+                    repeat: Infinity,
+                    repeatType: "loop",
+                    delay: Math.random() * 2,
+                  }}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header bar */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <motion.div
-              className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-transparent bg-clip-text"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-            >
-              HealthSync
-            </motion.div>
-          </div>
-
-          <motion.div
-            className="flex items-center space-x-3"
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-          >
-            {/* Search button/input */}
+      {/* Username + Search + Notifications row (below header, above dashboard cards) */}
+      {!showWelcome && (
+        <div className="max-w-7xl mx-auto px-4 mt-8 flex items-center justify-between">
+          <span className="text-lg font-semibold text-gray-800 dark:text-white">
+            {`Welcome${healthData?.user?.name ? `, ${healthData.user.name}` : ''}!`}
+          </span>
+          <div className="flex items-center space-x-3">
+            {/* Search bar */}
             <AnimatePresence mode="wait">
               {isSearchOpen ? (
                 <motion.div
                   className="relative"
                   initial={{ width: 40, opacity: 0 }}
-                  animate={{ width: 250, opacity: 1 }}
+                  animate={{ width: 220, opacity: 1 }}
                   exit={{ width: 40, opacity: 0 }}
                   transition={{ duration: 0.3 }}
                 >
                   <input
                     ref={searchInputRef}
                     type="text"
-                    placeholder="Search cards..."
-                    className="w-full pl-3 pr-10 py-2 rounded-full bg-white dark:bg-gray-800 border-none focus:ring-2 focus:ring-indigo-500 transition text-gray-900 dark:text-gray-100"
+                    placeholder="Search..."
+                    className="w-full pl-3 pr-10 py-2 rounded-full bg-white/90 text-gray-900 border-none focus:ring-2 focus:ring-indigo-400 transition"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                   />
                   <button
                     onClick={handleSearchToggle}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                   >
                     <X size={18} />
                   </button>
@@ -379,35 +593,23 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
               ) : (
                 <motion.button
                   onClick={handleSearchToggle}
-                  className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                  className="p-2 rounded-full hover:bg-indigo-400/20 transition-colors"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Search className="text-gray-600 dark:text-gray-300" size={20} />
+                  <Search className="text-gray-700 dark:text-white" size={20} />
                 </motion.button>
               )}
             </AnimatePresence>
 
-            {/* Refresh button */}
-            <motion.button
-              onClick={refreshData}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              animate={{ rotate: refreshing ? 360 : 0 }}
-              transition={{ duration: 1, ease: "linear", repeat: refreshing ? Infinity : 0 }}
-            >
-              <RefreshCw className="text-gray-600 dark:text-gray-300" size={20} />
-            </motion.button>
-
             {/* Notifications */}
             <motion.div className="relative" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
               <button
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors relative"
+                className="p-2 rounded-full hover:bg-indigo-400/20 transition-colors relative"
                 onClick={handleNotificationsClick}
                 aria-label="Show notifications"
               >
-                <Bell className="text-gray-600 dark:text-gray-300" size={20} />
+                <Bell className="text-gray-700 dark:text-white" size={20} />
                 {notificationCount > 0 && (
                   <motion.div
                     className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
@@ -453,9 +655,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
                 )}
               </AnimatePresence>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
-      </header>
+      )}
 
       {/* Main content */}
       {!showWelcome && (
@@ -472,11 +674,19 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
               justify-items-center
             "
           >
-            {filteredCards.map(card => (
-              <div key={card.id} className="flex w-full justify-center">
-                {card.component}
+            {filteredCards.length === 0 ? (
+              <div className="col-span-full w-full flex justify-center items-center py-16">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md px-8 py-6 text-center text-gray-500 dark:text-gray-300 text-lg font-medium">
+                   Card not available
+                </div>
               </div>
-            ))}
+            ) : (
+              filteredCards.map(card => (
+                <div key={card.id} className="flex w-full justify-center">
+                  {card.component}
+                </div>
+              ))
+            )}
           </div>
         </main>
       )}
@@ -517,21 +727,21 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             transition={{ delay: 0.7 }}
           >
             <motion.a
-              href="#"
+              href="/privacy"
               className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
               whileHover={{ y: -2 }}
             >
               Privacy
             </motion.a>
             <motion.a
-              href="#"
+              href="/terms"
               className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
               whileHover={{ y: -2 }}
             >
               Terms
             </motion.a>
             <motion.a
-              href="#"
+              href="/support"
               className="hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
               whileHover={{ y: -2 }}
             >
@@ -540,6 +750,47 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
           </motion.div>
         </div>
       </motion.footer>
+
+      {/* Health Tip Floating Button */}
+      <motion.button
+        className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => {
+          setShowTip(true);
+          setTipIndex((prev) => (prev + 1) % healthTips.length);
+        }}
+        aria-label="Show Health Tip"
+      >
+        <Info size={28} className="text-white" />
+      </motion.button>
+
+      {/* Health Tip Popup - only visible when showTip is true */}
+      <AnimatePresence>
+        {showTip && (
+          <motion.div 
+            className="fixed bottom-28 right-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-4 text-white z-50 max-w-md"
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 120 }}
+          >
+            <div className="flex items-start">
+              <MessageSquare className="mr-3 mt-1 flex-shrink-0" size={20} />
+              <div>
+                <h4 className="font-medium mb-1">Health Tip</h4>
+                <p className="text-sm opacity-90">{healthTips[tipIndex]}</p>
+              </div>
+              <button 
+                onClick={() => setShowTip(false)}
+                className="ml-3 text-white/70 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

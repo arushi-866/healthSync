@@ -204,13 +204,11 @@ function App() {
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
-  
     const timer = setTimeout(() => {
       if (appState === 'loading') {
         setAppState('onboarding');
       }
     }, 10000); 
-
     return () => clearTimeout(timer);
   }, [appState]);
 
@@ -270,7 +268,7 @@ function App() {
                     transition={{ duration: 0.5 }}
                   >
                     <h1 className="text-2xl font-semibold text-gray-800 dark:text-white mb-6">
-                      Welcome , <span className="text-blue-500">{userName}</span>!
+                      Welcome, <span className="text-blue-500">{userName}</span>!
                     </h1>
                   </motion.div>
                   
