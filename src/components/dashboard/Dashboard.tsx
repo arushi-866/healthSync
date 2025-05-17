@@ -68,6 +68,8 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
   const [confettiShown, setConfettiShown] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,29 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     }
   ];
 
+  const onboardingSteps = [
+    {
+      title: "Welcome to HealthSync!",
+      description: "Track your health, mood, sleep, and more in one beautiful dashboard.",
+      target: null,
+    },
+    {
+      title: "Search Anything",
+      description: "Use the search button to quickly find any health metric.",
+      target: "search",
+    },
+    {
+      title: "Notifications",
+      description: "Tap the bell to view reminders and health notifications.",
+      target: "notifications",
+    },
+    {
+      title: "Health Tips",
+      description: "Tap the floating info button for daily health tips.",
+      target: "healthTip",
+    },
+  ];
+
   const handleCardFocus = (cardId: string) => {
     if (layoutMode === 'grid') {
       setLayoutMode('focus');
@@ -131,6 +156,20 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     } else {
       setFocusedCard(cardId);
     }
+  };
+
+  const handleNextOnboarding = () => {
+    if (onboardingStep < onboardingSteps.length - 1) {
+      setOnboardingStep(onboardingStep + 1);
+    } else {
+      setShowOnboarding(false);
+      localStorage.setItem("healthsync_onboarded", "true");
+    }
+  };
+
+  const handleSkipOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem("healthsync_onboarded", "true");
   };
 
   const cards: { id: string; label: string; component: JSX.Element }[] = [
@@ -308,6 +347,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         setConfettiShown(true);
         setTimeout(() => setShowConfetti(false), 2500);
       }
+
+      // Show onboarding after welcome is gone, if not already completed
+      setTimeout(() => setShowOnboarding(true), 600);
     }, 4000);
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -370,6 +412,11 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       )
     : cards;
 
+  // useEffect(() => {
+  //   setTimeout(() => setShowOnboarding(true), 1200);
+  // }, []);
+
+  // Now the early return
   if (!mounted) return null;
 
   function handleNotificationsClick(event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
@@ -483,18 +530,6 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
               >
                 Your personal health dashboard, reimagined
               </motion.p>
-
-              {/* Username only, no search/notifications here */}
-              <motion.div
-                className="flex items-center justify-center mt-8 gap-4"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1, duration: 0.6 }}
-              >
-                <span className="text-lg font-semibold text-white">
-                  {`Welcome${healthData?.user?.name ? `, ${healthData.user.name}` : ''}!`}
-                </span>
-              </motion.div>
 
               {/* Loading animation */}
               <motion.div 
@@ -658,6 +693,54 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Onboarding overlay */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <motion.div
+            className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-gray-200 dark:border-gray-700 relative"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h2 className="text-xl font-bold mb-2 text-indigo-600 dark:text-indigo-400">{onboardingSteps[onboardingStep].title}</h2>
+              <p className="mb-6 text-gray-700 dark:text-gray-300">{onboardingSteps[onboardingStep].description}</p>
+              <div className="flex justify-between">
+                <button
+                  className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  onClick={handleSkipOnboarding}
+                >
+                  Skip
+                </button>
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition"
+                  onClick={handleNextOnboarding}
+                >
+                  {onboardingStep === onboardingSteps.length - 1 ? "Finish" : "Next"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Highlight rings for onboarding targets */}
+      {showOnboarding && onboardingSteps[onboardingStep].target === "search" && (
+        <div className="pointer-events-none fixed z-[99998] top-[calc(2.5rem+2.5rem)] right-40 w-12 h-12 rounded-full border-4 border-indigo-400 animate-pulse"></div>
+      )}
+      {showOnboarding && onboardingSteps[onboardingStep].target === "notifications" && (
+        <div className="pointer-events-none fixed z-[99998] top-[calc(2.5rem+2.5rem)] right-24 w-12 h-12 rounded-full border-4 border-indigo-400 animate-pulse"></div>
+      )}
+      {showOnboarding && onboardingSteps[onboardingStep].target === "healthTip" && (
+        <div className="pointer-events-none fixed z-[99998] bottom-8 right-8 w-20 h-20 rounded-full border-4 border-indigo-400 animate-pulse"></div>
       )}
 
       {/* Main content */}
