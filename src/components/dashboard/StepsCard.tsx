@@ -8,9 +8,10 @@ interface StepsCardProps {
   value: number;
   goal: number;
   history: Array<{ date: string; value: number }>;
+  onShowTip?: () => void; // <-- add this line
 }
 
-const StepsCard: React.FC<StepsCardProps> = ({ value, goal, history }) => {
+const StepsCard: React.FC<StepsCardProps> = ({ value, goal, history, onShowTip }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [progressBarWidth, setProgressBarWidth] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -74,22 +75,6 @@ const StepsCard: React.FC<StepsCardProps> = ({ value, goal, history }) => {
     return "#ef4444";                        // Red for minimal progress
   };
 
-  // Tooltip logic
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleTooltip = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowTooltip(!showTooltip);
-  };
-
   // Animation variants
   const barContainerVariants = {
     hidden: { opacity: 0 },
@@ -118,39 +103,15 @@ const StepsCard: React.FC<StepsCardProps> = ({ value, goal, history }) => {
       }
       extraControls={
         <div className="flex space-x-1">
-          <motion.button
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleTooltip}
+          <button
+            type="button"
+            onClick={onShowTip} // <-- show alert at the top
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show steps info"
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showTooltip && (
-                <motion.div 
-                  ref={tooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-72 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h5 className="font-medium mb-1 text-gray-800 dark:text-gray-200">About Steps</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    This card tracks your daily step count and progress toward your goal. 
-                    The bar chart shows your recent step history, and the progress bar visualizes your daily achievement.
-                  </p>
-                  <ul className="mt-2 text-xs text-gray-500 dark:text-gray-400 list-disc pl-4">
-                    <li>Green bars mean you hit your goal.</li>
-                    <li>Streaks are shown for consecutive goal days.</li>
-                    <li>Try to keep your streak going for better health!</li>
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+          </button>
         </div>
       }
     >

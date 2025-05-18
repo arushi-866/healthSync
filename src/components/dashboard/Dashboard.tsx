@@ -41,6 +41,7 @@ export interface HealthData {
   };
   weight: {
     value: number;
+    goal: number;
     history: { date: string; value: number; }[];
   };
   user?: {
@@ -70,7 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
   const [tipIndex, setTipIndex] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [showChatbot, setShowChatbot] = useState(false);
+  const [alertTip, setAlertTip] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -137,11 +138,11 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
       description: "Tap the floating info button for daily health tips.",
       target: "healthTip",
     },
-    {
-      title: "SyncAI Chatbot",
-      description: "Tap the purple sparkle button at the bottom left to chat with SyncAI, your AI health assistant.",
-      target: "chatbot",
-    },
+    // {
+    //   title: "SyncAI Chatbot",
+    //   description: "Tap the purple sparkle button at the bottom left to chat with SyncAI, your AI health assistant.",
+    //   target: "chatbot",
+    // },
   ];
 
   const handleCardFocus = (cardId: string) => {
@@ -186,6 +187,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         <HealthScoreCard
           score={healthData.healthScore}
           onClick={() => handleCardFocus('health-score')}
+          onShowTip={() => setAlertTip(
+            "Your Health Score combines activity, sleep quality, nutrition, and mental wellness into a single metric. Scores update daily based on your data."
+          )}
         />
       ),
     },
@@ -199,6 +203,10 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             date: new Date(Date.now() - (healthData.mood.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
             value: item.value
           }))}
+          onMoodChange={handleMoodChange}
+          onShowTip={() => setAlertTip(
+            "Track your emotional well-being over time and identify patterns in your mood changes. Use the emoji slider below to update your current mood."
+          )}
         />
       ),
     },
@@ -212,6 +220,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             date: new Date(Date.now() - (healthData.sleep.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
             value: item.value
           }))}
+          onShowTip={() => setAlertTip(
+            "This card tracks your nightly sleep duration and quality. Aim for 7-9 hours of good quality sleep for optimal health. The colored dots represent sleep quality for each day."
+          )}
         />
       ),
     },
@@ -222,7 +233,28 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         <WaterCard
           value={healthData.water.value}
           goal={healthData.water.goal}
-          history={healthData.water.history.map(item => ({ value: item.value }))}
+          onAddWater={handleAddWater}
+          streakDays={
+            // Calculate water streak: consecutive days meeting water goal
+            healthData.water.history
+              ? healthData.water.history
+                  .slice()
+                  .reverse()
+                  .reduce((streak, day) => {
+                    if (streak.continue && day.value >= healthData.water.goal) {
+                      return { count: streak.count + 1, continue: true };
+                    }
+                    return { count: streak.count, continue: false };
+                  }, { count: 0, continue: true }).count
+              : 0
+          }
+          history={healthData.water.history.map((item, idx) => ({
+            date: new Date(Date.now() - (healthData.water.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            value: item.value
+          }))}
+          onShowTip={() => setAlertTip(
+            "Track your daily water intake and stay hydrated! Each cup represents a serving of water. Aim to reach your goal every day for optimal health."
+          )}
         />
       ),
     },
@@ -237,6 +269,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             date: new Date(Date.now() - (healthData.steps.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
             value: item.value
           }))}
+          onShowTip={() => setAlertTip(
+            "This card tracks your daily step count and progress toward your goal. The bar chart shows your recent step history, and the progress bar visualizes your daily achievement. Try to keep your streak going for better health!"
+          )}
         />
       ),
     },
@@ -250,6 +285,9 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             date: new Date(Date.now() - (healthData.heartRate.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
             value: item.value
           }))}
+          onShowTip={() => setAlertTip(
+            "This card shows your current and historical heart rate. Keep your resting heart rate in a healthy range (60-100 BPM for adults) for optimal wellness. The animated graph simulates your pulse."
+          )}
         />
       ),
     },
@@ -263,6 +301,11 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
             date: new Date(Date.now() - (healthData.weight.history.length - idx - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
             value: item.value
           }))}
+          goalWeight={healthData.weight.goal}
+          startingWeight={healthData.weight.history[0]?.value}
+          onShowTip={() => setAlertTip(
+            "This card tracks your monthly weight trend. The chart shows your progress and moving average. Use the insights to understand your journey and stay motivated!"
+          )}
         />
       ),
     },
@@ -433,121 +476,13 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
     }
   }
 
-  const HealthBotLogo = () => (
-    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
-      <Sparkles className="text-white" size={24} />
-    </span>
-  );
+  // const HealthBotLogo = () => (
+  //   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+  //     <Sparkles className="text-white" size={24} />
+  //   </span>
+  // );
 
-  const HEALTHBOT_NAME = "SyncAI";
-
-  const Chatbot: React.FC = () => {
-    const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([
-      { sender: "bot", text: "Hi! I'm SyncAI, your HealthSync assistant. How can I help you today?" }
-    ]);
-    const [input, setInput] = useState("");
-    const [loading, setLoading] = useState(false);
-
-    // Replace with your Gemini 1.5 Pro API key
-    const GEMINI_API_KEY = "AIzaSyAAesaurLNdmCfdAlrfZJ53jgTp0x8pXB4";
-
-    const sendMessage = async (e?: React.FormEvent) => {
-      if (e) e.preventDefault();
-      if (!input.trim()) return;
-      const userMsg = input.trim();
-      setMessages((msgs) => [...msgs, { sender: "user", text: userMsg }]);
-      setInput("");
-      setLoading(true);
-
-      try {
-        const res = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=" + GEMINI_API_KEY,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: userMsg }] }],
-              generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 256
-              }
-            })
-          }
-        );
-        if (res.status === 429) {
-          setMessages((msgs) => [
-            ...msgs,
-            { sender: "bot", text: "SyncAI is receiving too many requests right now. Please wait a minute and try again." }
-          ]);
-          setLoading(false);
-          return;
-        }
-        const data = await res.json();
-        const botText =
-          data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-          "Sorry, I couldn't understand that. Please try again!";
-        setMessages((msgs) => [...msgs, { sender: "bot", text: botText }]);
-      } catch {
-        setMessages((msgs) => [
-          ...msgs,
-          { sender: "bot", text: "Sorry, there was a problem connecting to SyncAI. Please try again." }
-        ]);
-      }
-      setLoading(false);
-    };
-
-    return (
-      <div className="fixed bottom-8 left-8 z-[100] w-[350px] max-w-[95vw] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-2xl">
-          <HealthBotLogo />
-          <span className="font-bold text-white text-lg">{HEALTHBOT_NAME}</span>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: 320 }}>
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`px-4 py-2 rounded-xl text-sm max-w-[80%] ${
-                  msg.sender === "user"
-                    ? "bg-indigo-100 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100"
-                }`}
-              >
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="px-4 py-2 rounded-xl text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 animate-pulse">
-                SyncAI is typing...
-              </div>
-            </div>
-          )}
-        </div>
-        <form onSubmit={sendMessage} className="flex border-t border-gray-100 dark:border-gray-800">
-          <input
-            className="flex-1 px-4 py-3 bg-transparent outline-none text-gray-900 dark:text-white"
-            placeholder="Ask SyncAI anything..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            className="px-4 py-3 text-indigo-600 dark:text-indigo-400 font-semibold hover:underline disabled:opacity-50"
-            disabled={loading}
-          >
-            Send
-          </button>
-        </form>
-      </div>
-    );
-  };
+  // const HEALTHBOT_NAME = "SyncAI";
 
   return (
     <motion.div
@@ -856,17 +791,21 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
 
       {/* Highlight rings for onboarding targets */}
       {showOnboarding && onboardingSteps[onboardingStep].target === "search" && (
-        <div className="pointer-events-none fixed z-[99998] top-[calc(2.5rem+2.5rem)] right-40 w-12 h-12 rounded-full border-4 border-indigo-400 animate-pulse"></div>
+        <div className="pointer-events-none fixed z-[99998]" 
+             style={{ top: 'calc(2rem + 80px)', right: 'calc(112px + 32px)', width: '56px', height: '56px', borderRadius: '9999px', borderWidth: '4px', borderColor: '#818cf8', animation: 'pulse 2s infinite' }}>
+        </div>
       )}
       {showOnboarding && onboardingSteps[onboardingStep].target === "notifications" && (
-        <div className="pointer-events-none fixed z-[99998] top-[calc(2.5rem+2.5rem)] right-24 w-12 h-12 rounded-full border-4 border-indigo-400 animate-pulse"></div>
+        <div className="pointer-events-none fixed z-[99998]" 
+             style={{ top: 'calc(2rem + 80px)', right: 'calc(5rem + 32px)', width: '56px', height: '56px', borderRadius: '9999px', borderWidth: '4px', borderColor: '#818cf8', animation: 'pulse 2s infinite' }}>
+        </div>
       )}
       {showOnboarding && onboardingSteps[onboardingStep].target === "healthTip" && (
         <div className="pointer-events-none fixed z-[99998] bottom-8 right-8 w-20 h-20 rounded-full border-4 border-indigo-400 animate-pulse"></div>
       )}
-      {showOnboarding && onboardingSteps[onboardingStep].target === "chatbot" && (
+      {/* {showOnboarding && onboardingSteps[onboardingStep].target === "chatbot" && (
         <div className="pointer-events-none fixed z-[99998] bottom-8 left-8 w-20 h-20 rounded-full border-4 border-purple-400 animate-pulse"></div>
-      )}
+      )} */}
 
       {/* Main content */}
       {!showWelcome && (
@@ -977,7 +916,7 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => {
-          setShowTip(true);
+          setAlertTip(healthTips[tipIndex]);
           setTipIndex((prev) => (prev + 1) % healthTips.length);
         }}
         aria-label="Show Health Tip"
@@ -1012,36 +951,31 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
         )}
       </AnimatePresence>
 
-      {/* Chatbot Floating Button */}
-      <motion.button
-        className="fixed bottom-8 left-8 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setShowChatbot((v) => !v)}
-        aria-label="Open SyncAI Chatbot"
-        id="chatbot-fab"
-      >
-        <Sparkles size={28} className="text-white" />
-      </motion.button>
+     
 
-      {/* Chatbot Popup - appears exactly where the button is */}
       <AnimatePresence>
-        {showChatbot && (
+        {alertTip && (
           <motion.div
-            initial={{ y: 40, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="fixed bottom-8 left-8 z-[100] w-[350px] max-w-[95vw] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
+            initial={{ y: -40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -40, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[99999] w-[350px] max-w-[95vw] p-5 bg-indigo-600 text-white rounded-xl shadow-2xl border border-indigo-700 flex flex-col items-start"
+            style={{ pointerEvents: 'auto' }}
           >
-            <Chatbot />
-            <button
-              onClick={() => setShowChatbot(false)}
-              className="absolute -top-3 -right-3 bg-indigo-500 hover:bg-indigo-700 text-white rounded-full p-1 shadow"
-              aria-label="Close Chatbot"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex justify-between items-center w-full mb-2">
+              <h5 className="font-semibold text-lg">Health Tip</h5>
+              <button
+                onClick={() => setAlertTip(null)}
+                className="ml-2 text-white/80 hover:text-white text-xl"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-base leading-relaxed">
+              {alertTip}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1050,3 +984,12 @@ const Dashboard: React.FC<DashboardProps> = ({ healthData }) => {
 };
 
 export default Dashboard;
+
+function handleMoodChange(newValue: number): void {
+  throw new Error('Function not implemented.');
+}
+
+function handleAddWater(): void {
+  throw new Error('Function not implemented.');
+}
+

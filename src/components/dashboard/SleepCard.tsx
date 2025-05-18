@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface SleepCardProps {
   value: number;
   history: Array<{ date: string; value: number }>;
+  onShowTip?: () => void; // <-- add this line
 }
 
-const SleepCard: React.FC<SleepCardProps> = ({ value, history }) => {
+const SleepCard: React.FC<SleepCardProps> = ({ value, history, onShowTip }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [prevValue, setPrevValue] = useState(value);
   const [showPulse, setShowPulse] = useState(false);
@@ -85,35 +86,15 @@ const SleepCard: React.FC<SleepCardProps> = ({ value, history }) => {
       }
       extraControls={
         <div className="flex space-x-1">
-          <motion.button
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleTooltip}
+          <button
+            type="button"
+            onClick={onShowTip} // <-- show alert at the top
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show sleep info"
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showTooltip && (
-                <motion.div 
-                  ref={tooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-64 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h5 className="font-medium mb-1 text-gray-800 dark:text-gray-200">About Sleep</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    This card tracks your nightly sleep duration and quality. 
-                    Aim for 7-9 hours of good quality sleep for optimal health. 
-                    The colored dots represent sleep quality for each day.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+          </button>
         </div>
       }
     >
@@ -334,6 +315,7 @@ const SleepCard: React.FC<SleepCardProps> = ({ value, history }) => {
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
+
 
         {/* Add stats to fill empty space */}
         <motion.div

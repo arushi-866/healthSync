@@ -8,15 +8,14 @@ interface MoodCardProps {
   value: number;
   history: Array<{ date: string; value: number }>;
   onMoodChange?: (newValue: number) => void;
+  onShowTip?: () => void; // <-- add this line
 }
 
-const MoodCard: React.FC<MoodCardProps> = ({ value, history, onMoodChange }) => {
+const MoodCard: React.FC<MoodCardProps> = ({ value, history, onMoodChange, onShowTip }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [prevValue, setPrevValue] = useState(value);
-  const [showInfo, setShowInfo] = useState(false);
   const controls = useAnimation();
-  const infoTooltipRef = useRef<HTMLDivElement | null>(null);
 
   // Emoji mapping for mood values with descriptions and colors
   const moodData = [
@@ -99,12 +98,6 @@ const MoodCard: React.FC<MoodCardProps> = ({ value, history, onMoodChange }) => 
     y.set(0);
   };
 
-  // Info tooltip handlers
-  const toggleInfoTooltip = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setShowInfo(v => !v);
-  };
-
   return (
     <MetricCard 
       title="Mood Tracker"
@@ -118,33 +111,15 @@ const MoodCard: React.FC<MoodCardProps> = ({ value, history, onMoodChange }) => 
       }
       extraControls={
         <div className="flex space-x-1">
-          <motion.button
+          <button
             type="button"
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleInfoTooltip}
+            onClick={onShowTip} // <-- show alert at the top
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show mood tracker info"
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showInfo && (
-                <motion.div
-                  ref={infoTooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-64 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h4 className="font-semibold mb-2">About Mood Tracking</h4>
-                  <p className="mb-2">Track your emotional well-being over time and identify patterns in your mood changes.</p>
-                  <p>Use the emoji slider below to update your current mood.</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+          </button>
         </div>
       }
     >

@@ -8,13 +8,15 @@ interface HealthScoreCardProps {
   onClick?: () => void;
   previousScore?: number;
   lastUpdated?: string;
+  onShowTip?: () => void; // <-- add this line
 }
 
 const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ 
   score, 
   onClick, 
   previousScore = 78, 
-  lastUpdated = 'Today at 12:00 AM' 
+  lastUpdated = 'Today at 12:00 AM',
+  onShowTip // <-- add this
 }) => {
   const [prevScore, setPrevScore] = useState(score);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -236,33 +238,14 @@ const HealthScoreCard: React.FC<HealthScoreCardProps> = ({
       }
       extraControls={
         <div className="flex space-x-1 relative">
-          <motion.button
-            onClick={toggleTooltip}
+          <button
+            onClick={onShowTip} // <-- show alert on dashboard
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show health score info"
           >
             <Info size={16} />
-          </motion.button>
-          <AnimatePresence>
-            {showTooltip && (
-              <motion.div
-                ref={tooltipRef}
-                initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.22 }}
-                // Remove any opacity utility classes that might affect hover
-                className="absolute right-full top-0 mr-4 w-[320px] max-w-[90vw] min-w-[220px] p-6 bg-gray-900 rounded-lg shadow-2xl text-left z-[9999] border border-gray-700"
-                style={{ pointerEvents: 'auto', opacity: 1 }}
-              >
-                <h5 className="font-semibold mb-2 text-gray-100">About Health Score</h5>
-                <p className="text-base text-gray-300 leading-relaxed">
-                  Your Health Score combines activity, sleep quality, nutrition, and mental wellness
-                  into a single metric. Scores update daily based on your data.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </button>
         </div>
       }
     >

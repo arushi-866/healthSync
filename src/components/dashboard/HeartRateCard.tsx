@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 import MetricCard from './MetricCard';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface HeartRateCardProps {
   value: number;
   history: Array<{ date: string; value: number }>;
+  onShowTip?: () => void; // <-- add this line
 }
 
 const heartTips = [
@@ -17,7 +18,7 @@ const heartTips = [
   "Tip: Monitor your heart rate trends for early signs of health issues."
 ];
 
-const HeartRateCard: React.FC<HeartRateCardProps> = ({ value, history }) => {
+const HeartRateCard: React.FC<HeartRateCardProps> = ({ value, history, onShowTip }) => {
   // Generate data for the pulse graph (more detailed points for visualization)
   const generatePulseData = () => {
     const points = [];
@@ -45,26 +46,6 @@ const HeartRateCard: React.FC<HeartRateCardProps> = ({ value, history }) => {
     return points;
   };
 
-  const [showTooltip, setShowTooltip] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * heartTips.length));
-
-  // Tooltip close on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
-        setShowTooltip(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleTooltip = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowTooltip(!showTooltip);
-  };
-
   // Enhanced stats
   const bestDay = history.length ? Math.max(...history.map((h) => h.value)) : value;
   const worstDay = history.length ? Math.min(...history.map((h) => h.value)) : value;
@@ -85,40 +66,15 @@ const HeartRateCard: React.FC<HeartRateCardProps> = ({ value, history }) => {
       }
       extraControls={
         <div className="flex space-x-1">
-          <motion.button
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleTooltip}
+          <button
+            type="button"
+            onClick={onShowTip} // <-- show alert at the top
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show heart rate info"
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showTooltip && (
-                <motion.div 
-                  ref={tooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-72 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h5 className="font-medium mb-1 text-gray-800 dark:text-gray-200">About Heart Rate</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    This card shows your current and historical heart rate. 
-                    The animated graph simulates your pulse. 
-                    Keep your resting heart rate in a healthy range for optimal wellness.
-                  </p>
-                  <ul className="mt-2 text-xs text-gray-500 dark:text-gray-400 list-disc pl-4">
-                    <li>Normal resting heart rate: 60-100 BPM</li>
-                    <li>Lower is generally better (if you’re healthy)</li>
-                    <li>Click for a new heart health tip!</li>
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+          </button>
         </div>
       }
     >
@@ -192,17 +148,17 @@ const HeartRateCard: React.FC<HeartRateCardProps> = ({ value, history }) => {
         {/* Heart health tip */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={tipIndex}
+            key={value}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 0.8, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.5 }}
             className="mt-3 text-xs text-center text-gray-500 dark:text-gray-400 italic px-4"
-            onClick={() => setTipIndex((prev) => (prev + 1) % heartTips.length)}
+            onClick={() => {}}
             style={{ cursor: 'pointer' }}
             title="Click for another tip"
           >
-            {heartTips[tipIndex]}
+            {heartTips[Math.floor(Math.random() * heartTips.length)]}
           </motion.div>
         </AnimatePresence>
       </div>

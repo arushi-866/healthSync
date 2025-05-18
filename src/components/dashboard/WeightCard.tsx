@@ -9,6 +9,7 @@ interface WeightCardProps {
   history: Array<{ date: string; value: number }>;
   goalWeight?: number;
   startingWeight?: number;
+  onShowTip?: () => void; // <-- add this line
 }
 
 function getMonthYear(dateStr: string) {
@@ -71,7 +72,8 @@ const WeightCard: React.FC<WeightCardProps> = ({
   value, 
   history, 
   goalWeight,
-  startingWeight
+  startingWeight,
+  onShowTip // <-- add this
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -190,35 +192,12 @@ const WeightCard: React.FC<WeightCardProps> = ({
           <motion.button
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
-            onClick={toggleTooltip}
+            onClick={onShowTip} // <-- show alert at the top
             className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative z-50"
             style={{ position: 'relative', zIndex: 50 }}
+            aria-label="Show weight tracker info"
           >
             <Info size={16} />
-            <AnimatePresence>
-              {showTooltip && (
-                <motion.div 
-                  ref={tooltipRef}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 right-0 w-72 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-[9999] text-left border border-gray-200 dark:border-gray-700"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h5 className="font-medium mb-1 text-gray-800 dark:text-gray-200">About Weight Tracker</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    This card tracks your monthly weight trend. The chart shows your progress and moving average. 
-                    Use the insights to understand your journey and stay motivated!
-                  </p>
-                  <ul className="mt-2 text-xs text-gray-500 dark:text-gray-400 list-disc pl-4">
-                    <li>Click the chart for more details.</li>
-                    <li>Hover over points to see exact values.</li>
-                    <li>Click the tip below for more advice!</li>
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.button>
         </div>
       }
